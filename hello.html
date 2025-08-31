@@ -1,0 +1,53 @@
+<!-- index.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Smart Cane UI</title>
+  <!-- Add Leaflet CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <style>
+    body { font-family: Arial, sans-serif; text-align: center; margin-top: 50px; }
+    .data-container { margin: 20px; padding: 20px; border: 1px solid #ccc; border-radius: 5px; display: inline-block; }
+    .value { font-size: 1.2em; font-weight: bold; color: #333; }
+    #map { height: 400px; width: 80%; margin: 20px auto; border: 2px solid #ccc; border-radius: 5px; }
+  </style>
+</head>
+<body>
+  <h1>Smart Cane Location Monitor</h1>
+  <div class="data-container">
+    <p>Latitude: <span id="latitude" class="value">Loading...</span></p>
+    <p>Longitude: <span id="longitude" class="value">Loading...</span></p>
+    <button id="getCurrentLocation" style="margin-top: 10px; padding: 10px 20px; background-color: #4CAF50; color: white; border: none; border-radius: 5px; cursor: pointer;">
+      Get My Current Location
+    </button>
+    <button id="getIPLocation" style="margin-top: 10px; margin-left: 10px; padding: 10px 20px; background-color: #2196F3; color: white; border: none; border-radius: 5px; cursor: pointer;">
+      Get Approximate Location
+    </button>
+    <div style="margin-top: 20px; padding: 15px; border: 1px solid #ddd; border-radius: 5px; background-color: #f9f9f9;">
+      <h3 style="margin-top: 0;">Navigation</h3>
+      <input type="text" id="destinationInput" placeholder="Enter destination (e.g., Thamel, Kathmandu)" 
+             style="width: 250px; padding: 8px; margin-right: 10px; border: 1px solid #ccc; border-radius: 3px;">
+      <button id="findRoute" style="padding: 8px 15px; background-color: #FF5722; color: white; border: none; border-radius: 3px; cursor: pointer;">
+        Find Route
+      </button>
+      <button id="clearRoute" style="padding: 8px 15px; background-color: #9E9E9E; color: white; border: none; border-radius: 3px; cursor: pointer; margin-left: 5px;">
+        Clear Route
+      </button>
+      <div id="routeInfo" style="margin-top: 10px; font-size: 0.9em; color: #555;"></div>
+    </div>
+    <p id="status" style="margin-top: 10px; font-style: italic; color: #666;"></p>
+  </div>
+
+  <!-- Map container -->
+  <div id="map"></div>
+
+ <!-- Add Leaflet JS -->
+ <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+ <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-analytics.js"></script>
+<script src="script.js"></script>
+</body>
+</html>

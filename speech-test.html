@@ -1,0 +1,237 @@
+f<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Speech Test - Smart Cane</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f8f9fa;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #FF6B35;
+            text-align: center;
+        }
+        button {
+            padding: 12px 20px;
+            margin: 10px 5px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .test-btn {
+            background: #28a745;
+            color: white;
+        }
+        .test-btn:hover {
+            background: #218838;
+            transform: translateY(-2px);
+        }
+        .stop-btn {
+            background: #dc3545;
+            color: white;
+        }
+        .stop-btn:hover {
+            background: #c82333;
+            transform: translateY(-2px);
+        }
+        .info {
+            background: #e9ecef;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        .examples {
+            list-style: none;
+            padding: 0;
+        }
+        .examples li {
+            margin: 10px 0;
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 5px;
+            border-left: 4px solid #FF6B35;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔊 Speech Test - Smart Cane</h1>
+        
+        <div class="info">
+            <strong>Note:</strong> This page tests the text-to-speech functionality used in the Smart Cane navigation system. 
+            Make sure your speakers/headphones are on and volume is up.
+        </div>
+
+        <h3>🎤 Test Speech Functions:</h3>
+        
+        <button class="test-btn" onclick="testBasicSpeech()">
+            🗣️ Test Basic Speech
+        </button>
+        
+        <button class="test-btn" onclick="testRouteAnnouncement()">
+            🧭 Test Route Announcement
+        </button>
+        
+        <button class="test-btn" onclick="testDirectionUpdate()">
+            📍 Test Direction Update
+        </button>
+        
+        <button class="test-btn" onclick="testLocationUpdate()">
+            📍 Test Location Update
+        </button>
+        
+        <button class="test-btn" onclick="testAlert()">
+            ⚠️ Test Alert
+        </button>
+        
+        <button class="stop-btn" onclick="stopSpeech()">
+            🛑 Stop Speech
+        </button>
+
+        <h3>📝 What Gets Spoken:</h3>
+        <ul class="examples">
+            <li><strong>Route Found:</strong> "Route found. Head Northeast for 1.2 kilometers. Distance: 1.2 kilometers. Direction: Northeast."</li>
+            <li><strong>Direction Updates:</strong> "Head Northeast for 800 meters ahead."</li>
+            <li><strong>Location Updates:</strong> "Current location detected successfully"</li>
+            <li><strong>Connection Status:</strong> "GPS tracking connected"</li>
+            <li><strong>Errors:</strong> "Warning: Road routing unavailable. Following direct path."</li>
+        </ul>
+
+        <div class="info">
+            <strong>Browser Compatibility:</strong> Speech synthesis is supported in modern browsers including Chrome, Firefox, Safari, and Edge.
+        </div>
+    </div>
+
+    <!-- Include the speech manager -->
+    <script src="js/speech.js"></script>
+    
+    <script>
+        // Test functions
+        function testBasicSpeech() {
+            console.log('🧪 Testing basic speech...');
+            
+            // Ensure speechSynthesis is available
+            if (!('speechSynthesis' in window)) {
+                alert('Speech synthesis not supported in this browser');
+                return;
+            }
+            
+            // Cancel any ongoing speech
+            speechSynthesis.cancel();
+            
+            // Create utterance directly for immediate testing
+            const utterance = new SpeechSynthesisUtterance("Smart Cane navigation system ready. Speech is working correctly.");
+            utterance.volume = 1.0;
+            utterance.rate = 0.8;
+            utterance.pitch = 1.0;
+            
+            utterance.onstart = () => {
+                console.log('✅ Direct speech test started');
+            };
+            
+            utterance.onerror = (event) => {
+                console.error('❌ Direct speech test error:', event.error);
+                alert(`Speech error: ${event.error}`);
+            };
+            
+            utterance.onend = () => {
+                console.log('✅ Direct speech test completed');
+            };
+            
+            console.log('🚀 Starting direct speech synthesis...');
+            speechSynthesis.speak(utterance);
+        }
+        
+        function testRouteAnnouncement() {
+            console.log('🧭 Testing route announcement...');
+            const text = "Route found. Head Northeast for 1.2 kilometers. Distance: 1.2 kilometers. Direction: Northeast.";
+            
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.volume = 1.0;
+            utterance.rate = 0.8;
+            
+            utterance.onstart = () => console.log('✅ Route announcement started');
+            utterance.onerror = (e) => console.error('❌ Route announcement error:', e.error);
+            utterance.onend = () => console.log('✅ Route announcement completed');
+            
+            speechSynthesis.speak(utterance);
+        }
+        
+        function testDirectionUpdate() {
+            console.log('📍 Testing direction update...');
+            const text = "Head Northeast for 800 meters ahead.";
+            
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.volume = 1.0;
+            utterance.rate = 0.9;
+            
+            utterance.onstart = () => console.log('✅ Direction update started');
+            utterance.onerror = (e) => console.error('❌ Direction update error:', e.error);
+            utterance.onend = () => console.log('✅ Direction update completed');
+            
+            speechSynthesis.speak(utterance);
+        }
+        
+        function testLocationUpdate() {
+            console.log('📍 Testing location update...');
+            const text = "Current location detected successfully";
+            
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.volume = 1.0;
+            utterance.rate = 0.9;
+            
+            utterance.onstart = () => console.log('✅ Location update started');
+            utterance.onerror = (e) => console.error('❌ Location update error:', e.error);
+            utterance.onend = () => console.log('✅ Location update completed');
+            
+            speechSynthesis.speak(utterance);
+        }
+        
+        function testAlert() {
+            console.log('⚠️ Testing alert...');
+            const text = "Warning: Road routing unavailable. Following direct path.";
+            
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.volume = 1.0;
+            utterance.rate = 0.8;
+            utterance.pitch = 1.2; // Higher pitch for alerts
+            
+            utterance.onstart = () => console.log('✅ Alert started');
+            utterance.onerror = (e) => console.error('❌ Alert error:', e.error);
+            utterance.onend = () => console.log('✅ Alert completed');
+            
+            speechSynthesis.speak(utterance);
+        }
+        
+        function stopSpeech() {
+            speechManager.stop();
+        }
+        
+        // Initialize on page load
+        window.addEventListener('load', () => {
+            console.log('Speech test page loaded');
+            console.log('Speech synthesis supported:', !!window.speechSynthesis);
+            
+            // Test if speechManager is available
+            if (typeof speechManager !== 'undefined') {
+                console.log('Speech Manager loaded successfully');
+            } else {
+                console.error('Speech Manager not loaded');
+            }
+        });
+    </script>
+</body>
+</html>
