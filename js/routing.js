@@ -3,6 +3,11 @@ class RoutingManager {
   constructor() {
     this.currentRoute = null;
     this.destinationMarker = null;
+    this.currentDestination = null;
+    this.lastDirection = null;
+    this.lastAnnouncementTime = 0;
+    this.reachedDestination = false;
+    this.routeStarted = false;
   }
 
   // Geocode destination address to coordinates
@@ -71,7 +76,7 @@ class RoutingManager {
         return true;
       }
     } catch (error) {
-      console.log('OSRM failed, trying alternatives...');
+      logger.log('OSRM failed, trying alternatives...');
     }
 
     // Try GraphHopper as fallback
@@ -82,7 +87,7 @@ class RoutingManager {
         return true;
       }
     } catch (error) {
-      console.log('GraphHopper failed, using straight line...');
+      logger.log('GraphHopper failed, using straight line...');
     }
 
     // Fallback to straight line
@@ -135,6 +140,15 @@ class RoutingManager {
     // Convert coordinates to Leaflet format
     const latlngs = routeData.coordinates.map(coord => [coord[1], coord[0]]);
     
+    // Store route and destination for real-time navigation
+    this.currentRoute = latlngs;
+    this.currentDestination = {
+      lat: latlngs[latlngs.length - 1][0],
+      lng: latlngs[latlngs.length - 1][1]
+    };
+    this.routeStarted = true;
+    this.reachedDestination = false;
+    
     // Draw route on map
     mapManager.drawRoute(latlngs, {
       color: 'blue',
@@ -152,12 +166,7 @@ class RoutingManager {
 
     // Get direction information
     const currentLocation = locationManager.getCurrentLocation();
-    const destination = {
-      lat: latlngs[latlngs.length - 1][0],
-      lng: latlngs[latlngs.length - 1][1]
-    };
-    
-    const directionInfo = this.getDirectionInfo(currentLocation, destination);
+    const directionInfo = this.getDirectionInfo(currentLocation, this.currentDestination);
     
     // Show route information with direction
     this.showRouteInfo(`
@@ -166,7 +175,8 @@ class RoutingManager {
       Direction: ${directionInfo.direction.emoji} ${directionInfo.direction.name} (${directionInfo.bearing}°)<br>
       Estimated time: ${duration} minutes<br>
       <strong>📍 ${directionInfo.instruction}</strong><br>
-      <em>Following roads and walkways (${service})</em>
+      <em>Following roads and walkways (${service})</em><br>
+      <strong>🔊 Real-time navigation active</strong>
     `, 'success');
 
     // Show compass direction
@@ -180,12 +190,22 @@ class RoutingManager {
         direction: directionInfo.direction.name,
         duration: duration
       });
+      speechManager.speak('Real-time navigation started. You will hear direction updates as you walk.');
     }
+    
+    // Store initial direction
+    this.lastDirection = directionInfo.direction.name;
   }
 
   // Draw straight line route (fallback)
   drawStraightLineRoute(start, end) {
     const latlngs = [[start.lat, start.lng], [end.lat, end.lng]];
+    
+    // Store route and destination for real-time navigation
+    this.currentRoute = latlngs;
+    this.currentDestination = end;
+    this.routeStarted = true;
+    this.reachedDestination = false;
     
     mapManager.drawRoute(latlngs, {
       color: 'red',
@@ -203,7 +223,8 @@ class RoutingManager {
       Direction: ${directionInfo.direction.emoji} ${directionInfo.direction.name} (${directionInfo.bearing}°)<br>
       Estimated time: ${Math.round(distance * 12)} minutes walking<br>
       <strong>📍 ${directionInfo.instruction}</strong><br>
-      <em>Road routing unavailable - follow red dashed line</em>
+      <em>Road routing unavailable - follow red dashed line</em><br>
+      <strong>🔊 Real-time navigation active</strong>
     `, 'warning');
 
     // Show compass direction
@@ -218,7 +239,11 @@ class RoutingManager {
         duration: Math.round(distance * 12)
       });
       speechManager.speakAlert('Warning: Road routing unavailable. Following direct path.');
+      speechManager.speak('Real-time navigation started. You will hear direction updates as you walk.');
     }
+    
+    // Store initial direction
+    this.lastDirection = directionInfo.direction.name;
   }
 
   // Clear current route
@@ -227,6 +252,18 @@ class RoutingManager {
     document.getElementById('routeInfo').innerHTML = '';
     document.getElementById('destinationInput').value = '';
     this.hideCompass();
+    
+    // Reset navigation state
+    this.currentRoute = null;
+    this.currentDestination = null;
+    this.lastDirection = null;
+    this.routeStarted = false;
+    this.reachedDestination = false;
+    
+    // Announce route clearing
+    if (typeof speechManager !== 'undefined') {
+      speechManager.speak('Route cleared. Real-time navigation stopped.');
+    }
     
     // Recenter map on current location
     const currentLocation = locationManager.getCurrentLocation();
@@ -360,6 +397,122 @@ class RoutingManager {
       direction: directionInfo.direction.name,
       instruction: instruction
     };
+  }
+
+  // Check if there's an active route for real-time navigation
+  hasActiveRoute() {
+    return this.routeStarted && this.currentDestination && !this.reachedDestination;
+  }
+
+  // Real-time navigation updates as user moves
+  updateRealTimeNavigation(currentLocation) {
+    if (!this.hasActiveRoute()) return;
+
+    const now = Date.now();
+    const distance = this.calculateDistance(
+      currentLocation.lat, currentLocation.lng,
+      this.currentDestination.lat, this.currentDestination.lng
+    );
+
+    // Check if destination reached (within 10 meters)
+    if (distance < 0.01) { // ~10 meters in km
+      this.announceDestinationReached();
+      return;
+    }
+
+    // Get current direction
+    const directionInfo = this.getDirectionInfo(currentLocation, this.currentDestination);
+    const currentDirection = directionInfo.direction.name;
+
+    // Update compass continuously
+    this.showCompass(directionInfo);
+
+    // Announce direction changes (throttled to avoid spam)
+    const shouldAnnounce = this.shouldAnnounceUpdate(currentDirection, distance, now);
+    
+    if (shouldAnnounce) {
+      this.announceDirectionUpdate(directionInfo, distance);
+      this.lastDirection = currentDirection;
+      this.lastAnnouncementTime = now;
+    }
+
+    // Update UI with current progress
+    this.updateNavigationProgress(directionInfo, distance);
+  }
+
+  // Determine if we should announce an update
+  shouldAnnounceUpdate(currentDirection, distance, now) {
+    const timeSinceLastAnnouncement = now - this.lastAnnouncementTime;
+    const minimumInterval = 15000; // 15 seconds minimum between announcements
+    
+    // Always announce if direction changed significantly
+    if (this.lastDirection && currentDirection !== this.lastDirection) {
+      return timeSinceLastAnnouncement > 5000; // 5 second cooldown for direction changes
+    }
+    
+    // Announce distance milestones every 100m if close, or every 500m if far
+    const milestone = distance < 0.5 ? 0.1 : 0.5; // 100m or 500m
+    const timeForDistance = distance < 0.5 ? 30000 : 60000; // 30s or 60s intervals
+    
+    return timeSinceLastAnnouncement > timeForDistance;
+  }
+
+  // Announce direction updates during navigation
+  announceDirectionUpdate(directionInfo, distance) {
+    if (typeof speechManager === 'undefined') return;
+
+    const distanceText = distance < 1 ? 
+      `${Math.round(distance * 1000)} meters` : 
+      `${distance.toFixed(1)} kilometers`;
+
+    let message;
+    if (distance < 0.05) { // Less than 50m
+      message = `Almost there! Continue ${directionInfo.direction.name.toLowerCase()} for ${Math.round(distance * 1000)} meters.`;
+    } else if (distance < 0.2) { // Less than 200m
+      message = `Continue ${directionInfo.direction.name.toLowerCase()}. Destination ${Math.round(distance * 1000)} meters ahead.`;
+    } else {
+      message = `Keep heading ${directionInfo.direction.name.toLowerCase()}. ${distanceText} remaining.`;
+    }
+
+    speechManager.speak(message);
+  }
+
+  // Announce when destination is reached
+  announceDestinationReached() {
+    this.reachedDestination = true;
+    this.routeStarted = false;
+    
+    if (typeof speechManager !== 'undefined') {
+      speechManager.speak('Destination reached! You have arrived at your location.');
+    }
+    
+    // Update UI
+    this.showRouteInfo(`
+      <strong>🎯 Destination Reached!</strong><br>
+      You have successfully arrived at your destination.<br>
+      <em>Real-time navigation completed</em>
+    `, 'success');
+    
+    // Clear navigation state but keep route visible
+    setTimeout(() => {
+      this.hideCompass();
+    }, 5000);
+  }
+
+  // Update navigation progress in UI
+  updateNavigationProgress(directionInfo, distance) {
+    const progressElement = document.getElementById('navigationProgress');
+    if (progressElement) {
+      const distanceText = distance < 1 ? 
+        `${Math.round(distance * 1000)}m` : 
+        `${distance.toFixed(1)}km`;
+      
+      progressElement.innerHTML = `
+        <strong>📍 Current Direction:</strong> ${directionInfo.direction.emoji} ${directionInfo.direction.name}<br>
+        <strong>📏 Distance Remaining:</strong> ${distanceText}<br>
+        <strong>🧭 Bearing:</strong> ${directionInfo.bearing}°
+      `;
+    }
   }
 
   // Show route information

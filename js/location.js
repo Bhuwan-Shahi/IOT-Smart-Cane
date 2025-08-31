@@ -138,9 +138,19 @@ class LocationManager {
         
         this.currentLocation = location;
         this.sendToFirebase(location);
+        
+        // Trigger real-time navigation updates if we have an active route
+        if (typeof routingManager !== 'undefined' && routingManager.hasActiveRoute()) {
+          routingManager.updateRealTimeNavigation(location);
+        }
+        
+        // Update app display
+        if (typeof window.app !== 'undefined') {
+          window.app.onLocationUpdate(location);
+        }
       },
       (error) => {
-        console.error('Watch position error:', error);
+        logger.error('Watch position error:', error);
       },
       options
     );
@@ -178,6 +188,71 @@ class LocationManager {
 
   getCurrentLocation() {
     return this.currentLocation;
+  }
+
+  // Reverse geocoding: Convert coordinates to readable location names
+  async reverseGeocode(lat, lng) {
+    try {
+      console.log(`🌍 Reverse geocoding: ${lat}, ${lng}`);
+      
+      // Using OpenStreetMap Nominatim API for reverse geocoding (free)
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=14&addressdetails=1`,
+        {
+          headers: {
+            'User-Agent': 'Smart-Cane-Navigation/1.0'
+          }
+        }
+      );
+      
+      if (response.ok) {
+        const data = await response.json();
+        console.log('📍 Geocoding response:', data);
+        
+        // Extract meaningful location components
+        const address = data.address || {};
+        const locationParts = [];
+        
+        // Add specific location details in order of preference
+        if (address.neighbourhood) locationParts.push(address.neighbourhood);
+        if (address.suburb) locationParts.push(address.suburb);
+        if (address.city_district) locationParts.push(address.city_district);
+        if (address.city || address.town || address.village) {
+          locationParts.push(address.city || address.town || address.village);
+        }
+        if (address.state) locationParts.push(address.state);
+        if (address.country) locationParts.push(address.country);
+        
+        // Create readable location string
+        let location = locationParts.slice(0, 3).join(', '); // First 3 components
+        
+        // Fallback to display_name if no specific components
+        if (!location && data.display_name) {
+          const parts = data.display_name.split(', ');
+          location = parts.slice(0, 3).join(', ');
+        }
+        
+        const result = {
+          formatted: location || 'Unknown Location',
+          full: data.display_name || 'Location details unavailable',
+          coordinates: `${lat.toFixed(6)}, ${lng.toFixed(6)}`,
+          address: address
+        };
+        
+        console.log('✅ Location formatted:', result.formatted);
+        return result;
+      }
+    } catch (error) {
+      console.warn('⚠️ Reverse geocoding failed:', error);
+    }
+    
+    // Fallback to coordinates if geocoding fails
+    return {
+      formatted: `${lat.toFixed(6)}, ${lng.toFixed(6)}`,
+      full: 'Reverse geocoding unavailable',
+      coordinates: `${lat.toFixed(6)}, ${lng.toFixed(6)}`,
+      address: {}
+    };
   }
 }
 

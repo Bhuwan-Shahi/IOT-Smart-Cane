@@ -5,13 +5,36 @@ class SmartCaneApp {
     this.dataUpdateInterval = null;
   }
 
-  // Initialize the application
-  initialize() {
+    // Initialize application
+  async initialize() {
+    await this.setupFirebaseListener();
     this.setupEventListeners();
-    this.setupFirebaseDataListener();
-    this.setupLocationFallback();
     this.initializeSpeech();
-    console.log('Smart Cane App initialized');
+    
+    // Try to get initial location after a short delay
+    setTimeout(() => {
+      this.checkAndPromptLocation();
+    }, 3000);
+    
+    logger.info('Smart Cane App initialized');
+  }
+
+    // Check if location is available and prompt user if needed
+  async checkAndPromptLocation() {
+    const locationNameElement = document.getElementById('locationName');
+    
+    // If still loading after 3 seconds, try to get location automatically
+    if (locationNameElement && locationNameElement.textContent === 'Loading...') {
+      logger.log('No location data, attempting to get current location...');
+      
+      try {
+        // Try to get location automatically
+        await this.handleGetCurrentLocation();
+      } catch (error) {
+        logger.log('Auto-location failed, showing manual prompt');
+        this.showStatus('Click "Get Current Location" to start navigation', 'info');
+      }
+    }
   }
 
   // Initialize speech functionality
@@ -33,10 +56,10 @@ class SmartCaneApp {
       }
     };
     
-    // Add click listeners to initialize speech on first user interaction
+        // Add click listeners to initialize speech on first user interaction
     document.addEventListener('click', () => {
       if (speechManager && !speechManager.userInteractionDone) {
-        console.log('🤝 First user click - initializing speech...');
+        logger.log('First user click - initializing speech...');
         speechManager.initializeWithUserInteraction();
         speechManager.userInteractionDone = true;
       }
@@ -45,47 +68,90 @@ class SmartCaneApp {
     // Initial speech test (delayed to allow for voice loading)
     setTimeout(() => {
       if (speechManager.isEnabled) {
-        console.log('🔊 Testing initial speech...');
+        logger.log('Testing initial speech...');
         speechManager.test();
       }
     }, 3000);
   }
 
-  // Setup all event listeners
+  // Show status message to user
+  showStatus(message, type = 'info') {
+    logger.log(`Status (${type}): ${message}`);
+    
+    const statusElement = document.getElementById('statusMessage');
+    if (statusElement) {
+      statusElement.textContent = message;
+      statusElement.className = `status-message ${type}`;
+      
+      // Auto-hide after 5 seconds for non-error messages
+      if (type !== 'error') {
+        setTimeout(() => {
+          statusElement.classList.add('hidden');
+        }, 5000);
+      }
+    }
+  }
+
+  // Setup event listeners for UI components
   setupEventListeners() {
-    // Location buttons
-    document.getElementById('getCurrentLocation').addEventListener('click', 
-      () => this.handleGetCurrentLocation());
+    // Make sure DOM is loaded
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', () => this.setupEventListeners());
+      return;
+    }
     
-    document.getElementById('getIPLocation').addEventListener('click', 
-      () => this.handleGetIPLocation());
-
-    // Navigation buttons
-    document.getElementById('findRoute').addEventListener('click', 
-      () => this.handleFindRoute());
-    
-    document.getElementById('clearRoute').addEventListener('click', 
-      () => this.handleClearRoute());
-
-    // Destination input - allow Enter key
-    document.getElementById('destinationInput').addEventListener('keypress', 
-      (e) => {
-        if (e.key === 'Enter') {
+    try {
+      // Route to destination button
+      const routeBtn = document.getElementById('findRoute');
+      if (routeBtn) {
+        routeBtn.addEventListener('click', () => {
           this.handleFindRoute();
-        }
-      });
-
-    // Window resize handler for map
-    window.addEventListener('resize', () => {
-      mapManager.invalidateSize();
-    });
+        });
+      }
+      
+      // Clear route button
+      const clearRouteBtn = document.getElementById('clearRoute');
+      if (clearRouteBtn) {
+        clearRouteBtn.addEventListener('click', () => {
+          this.handleClearRoute();
+        });
+      }
+      
+      // Test speech button
+      const testSpeechBtn = document.getElementById('testSpeech');
+      if (testSpeechBtn) {
+        testSpeechBtn.addEventListener('click', () => {
+          if (typeof speechManager !== 'undefined') {
+            speechManager.test();
+          }
+        });
+      }
+      
+      // Location control buttons - using correct IDs from HTML
+      const getCurrentLocationBtn = document.getElementById('getCurrentLocation');
+      if (getCurrentLocationBtn) {
+        getCurrentLocationBtn.addEventListener('click', () => {
+          this.handleGetCurrentLocation();
+        });
+      }
+      
+      const refreshLocationBtn = document.getElementById('refreshLocation');
+      if (refreshLocationBtn) {
+        refreshLocationBtn.addEventListener('click', () => {
+          this.handleRefreshLocation();
+        });
+      }
+      
+    } catch (error) {
+      logger.error('Error setting up event listeners:', error);
+    }
   }
 
   // Setup Firebase real-time data listener
   setupFirebaseDataListener() {
     gpsDataRef.on('value', (snapshot) => {
       const data = snapshot.val();
-      console.log('Firebase data received:', data);
+      logger.log('Firebase data received:', data);
       
       if (data && data.Latitude && data.Longitude) {
         this.updateLocationDisplay(data);
@@ -108,52 +174,89 @@ class SmartCaneApp {
           }
         }
       } else {
-        this.updateLocationDisplay({ Latitude: 'N/A', Longitude: 'N/A' });
+        this.showStatus('Waiting for GPS data from device...', 'info');
       }
     }, (error) => {
-      console.error("Firebase error: ", error);
-      this.updateLocationDisplay({ Latitude: 'Error', Longitude: 'Error' });
-      this.showStatus('Firebase connection error: ' + error.message, 'error');
+      logger.error('Firebase data listener error:', error);
+      this.showStatus('Connection error with GPS device', 'error');
     });
   }
 
   // Setup fallback message if no Firebase data
   setupLocationFallback() {
     setTimeout(() => {
-      const latElement = document.getElementById('latitude');
-      if (latElement && latElement.textContent === 'Loading...') {
+      const locationNameElement = document.getElementById('locationName');
+      if (locationNameElement && locationNameElement.textContent === 'Loading...') {
         this.showStatus('No device data found. Use "Get Current Location" to start.', 'warning');
+        
+        // Update UI to show manual location prompt
+        locationNameElement.textContent = 'No GPS Device';
+        const coordinatesElement = document.getElementById('coordinates');
+        if (coordinatesElement) coordinatesElement.textContent = 'Click "Get Current Location"';
+        
+        const sourceElement = document.getElementById('locationSource');
+        if (sourceElement) {
+          sourceElement.textContent = 'MANUAL';
+          sourceElement.className = 'value source manual';
+        }
+        
+        const accuracyElement = document.getElementById('locationAccuracy');
+        if (accuracyElement) {
+          accuracyElement.textContent = 'Use GPS Button';
+          accuracyElement.className = 'value accuracy low';
+        }
       }
     }, 5000);
   }
 
   // Handle get current location button
   async handleGetCurrentLocation() {
+    logger.info('Getting current location...');
+    
+    // Show loading state
+    const locationNameElement = document.getElementById('locationName');
+    const coordinatesElement = document.getElementById('coordinates');
+    const sourceElement = document.getElementById('locationSource');
+    
+    if (locationNameElement) locationNameElement.textContent = 'Getting location...';
+    if (coordinatesElement) coordinatesElement.textContent = 'Please wait...';
+    if (sourceElement) sourceElement.textContent = 'GPS';
+    
+    this.showStatus('Getting your current location...', 'info');
+    
     try {
       const location = await locationManager.getHighAccuracyLocation();
       if (location) {
-        this.updateLocationDisplay({
+        await this.updateLocationDisplay({
           Latitude: location.lat,
           Longitude: location.lng
-        });
+        }, 'gps', location.accuracy);
         
         mapManager.updateCurrentLocation(location);
         
         // Optionally send to Firebase
         await locationManager.sendToFirebase(location);
         
-        // Speak location confirmation
+        this.showStatus('Current location detected successfully', 'success');
+        
+        // Speak location confirmation with location name
         if (typeof speechManager !== 'undefined') {
-          speechManager.speak('Current location detected successfully');
+          const locationInfo = await locationManager.reverseGeocode(location.lat, location.lng);
+          speechManager.speak(`Current location detected: ${locationInfo.formatted}`);
         }
+      } else {
+        throw new Error('Location data not available');
       }
     } catch (error) {
-      console.error('Error getting current location:', error);
       this.showStatus('Failed to get current location: ' + error.message, 'error');
+      
+      // Show error state
+      if (locationNameElement) locationNameElement.textContent = 'Location Error';
+      if (coordinatesElement) coordinatesElement.textContent = 'Permission denied or unavailable';
       
       // Speak error
       if (typeof speechManager !== 'undefined') {
-        speechManager.speakAlert('Failed to get location. Please try again.');
+        speechManager.speakAlert('Failed to get location. Please check permissions and try again.');
       }
     }
   }
@@ -162,22 +265,89 @@ class SmartCaneApp {
   async handleGetIPLocation() {
     const location = await locationManager.getLocationFromIP();
     if (location) {
-      this.updateLocationDisplay({
+      await this.updateLocationDisplay({
         Latitude: location.lat,
         Longitude: location.lng
-      });
+      }, 'ip');
       
       mapManager.updateCurrentLocation(location);
+      this.showStatus('Approximate location from IP address', 'warning');
+      
+      // Speak IP location with location name
+      if (typeof speechManager !== 'undefined') {
+        const locationInfo = await locationManager.reverseGeocode(location.lat, location.lng);
+        speechManager.speak(`Approximate location detected: ${locationInfo.formatted}`);
+      }
       
       // Optionally send to Firebase
       await locationManager.sendToFirebase(location);
+    } else {
+      this.showStatus('Failed to get location from IP', 'error');
     }
   }
 
-  // Handle find route button
+    // Handle refresh location button
+  async handleRefreshLocation() {
+    this.showStatus('Refreshing location data...', 'info');
+    
+    try {
+      // Re-initialize Firebase listener
+      await this.setupFirebaseListener();
+      this.showStatus('Location data refreshed successfully', 'success');
+      
+      // Speak refresh confirmation
+      if (typeof speechManager !== 'undefined') {
+        speechManager.speak('Location data refreshed');
+      }
+    } catch (error) {
+      this.showStatus('Failed to refresh location data', 'error');
+      
+      // Speak error
+      if (typeof speechManager !== 'undefined') {
+        speechManager.speakAlert('Failed to refresh location data');
+      }
+    }
+  }
+
+  // Called when location updates (for real-time navigation)
+  onLocationUpdate(location) {
+    // Update the location display
+    this.updateLocationDisplay({
+      Latitude: location.lat,
+      Longitude: location.lng
+    }, 'gps', location.accuracy);
+    
+    // Update map
+    if (typeof mapManager !== 'undefined') {
+      mapManager.updateCurrentLocation(location);
+    }
+  }
+
+    // Handle find route button
   async handleFindRoute() {
-    const destination = document.getElementById('destinationInput').value;
-    await routingManager.findRoute(destination);
+    logger.info('Find route requested');
+    
+    try {
+      const destination = document.getElementById('destinationInput').value;
+      
+      if (!destination || !destination.trim()) {
+        this.showStatus('Please enter a destination', 'warning');
+        return;
+      }
+      
+      if (typeof routingManager === 'undefined') {
+        logger.error('Routing manager not available');
+        this.showStatus('Navigation system not available', 'error');
+        return;
+      }
+      
+      this.showStatus('Finding route...', 'info');
+      await routingManager.findRoute(destination);
+      
+    } catch (error) {
+      logger.error('Error in handleFindRoute:', error);
+      this.showStatus('Failed to find route: ' + error.message, 'error');
+    }
   }
 
   // Handle clear route button
@@ -185,13 +355,91 @@ class SmartCaneApp {
     routingManager.clearRoute();
   }
 
-  // Update location display in UI
-  updateLocationDisplay(data) {
-    const latElement = document.getElementById('latitude');
-    const lngElement = document.getElementById('longitude');
+  // Update location display in UI with address information
+  async updateLocationDisplay(data, source = 'firebase', accuracy = null) {
+    try {
+      if (data.Latitude && data.Longitude) {
+        const lat = parseFloat(data.Latitude);
+        const lng = parseFloat(data.Longitude);
+        
+        if (!isNaN(lat) && !isNaN(lng)) {
+          // Get location name using reverse geocoding
+          const locationInfo = await locationManager.reverseGeocode(lat, lng);
+          
+          // Update location name
+          const locationNameElement = document.getElementById('locationName');
+          if (locationNameElement) {
+            locationNameElement.textContent = locationInfo.formatted;
+            locationNameElement.title = locationInfo.full; // Tooltip with full address
+          }
+          
+          // Update coordinates
+          const coordinatesElement = document.getElementById('coordinates');
+          if (coordinatesElement) {
+            coordinatesElement.textContent = locationInfo.coordinates;
+          }
+          
+          // Update source
+          const sourceElement = document.getElementById('locationSource');
+          if (sourceElement) {
+            sourceElement.textContent = source.toUpperCase();
+            sourceElement.className = `value source ${source}`;
+          }
+          
+          // Update accuracy
+          const accuracyElement = document.getElementById('locationAccuracy');
+          if (accuracyElement) {
+            let accuracyText = 'Unknown';
+            let accuracyClass = 'low';
+            
+            if (accuracy !== null) {
+              if (accuracy < 10) {
+                accuracyText = `High (±${Math.round(accuracy)}m)`;
+                accuracyClass = 'high';
+              } else if (accuracy < 50) {
+                accuracyText = `Medium (±${Math.round(accuracy)}m)`;
+                accuracyClass = 'medium';
+              } else {
+                accuracyText = `Low (±${Math.round(accuracy)}m)`;
+                accuracyClass = 'low';
+              }
+            } else if (source === 'firebase') {
+              accuracyText = 'GPS Device';
+              accuracyClass = 'high';
+            } else if (source === 'ip') {
+              accuracyText = 'Approximate';
+              accuracyClass = 'low';
+            }
+            
+            accuracyElement.textContent = accuracyText;
+            accuracyElement.className = `value accuracy ${accuracyClass}`;
+          }
+          
+          return locationInfo;
+        }
+      }
+      
+      // Fallback for invalid data
+      this.updateLocationDisplayFallback(data);
+      return null;
+      
+    } catch (error) {
+      this.updateLocationDisplayFallback({ error: error.message });
+      return null;
+    }
+  }
+
+  // Fallback for invalid location data
+  updateLocationDisplayFallback(data) {
+    const locationNameElement = document.getElementById('locationName');
+    const coordinatesElement = document.getElementById('coordinates');
+    const sourceElement = document.getElementById('locationSource');
+    const accuracyElement = document.getElementById('locationAccuracy');
     
-    if (latElement) latElement.textContent = data.Latitude || 'N/A';
-    if (lngElement) lngElement.textContent = data.Longitude || 'N/A';
+    if (locationNameElement) locationNameElement.textContent = data.Latitude || 'Location Error';
+    if (coordinatesElement) coordinatesElement.textContent = data.Longitude || 'No Coordinates';
+    if (sourceElement) sourceElement.textContent = 'ERROR';
+    if (accuracyElement) accuracyElement.textContent = 'Unknown';
   }
 
   // Show status message
@@ -235,6 +483,7 @@ document.addEventListener('DOMContentLoaded', () => {
   
   // Make app globally available for debugging
   window.smartCaneApp = app;
+  window.app = app; // Also assign to window.app for compatibility
 });
 
 // Service Worker registration (for future PWA features)

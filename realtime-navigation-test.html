@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Real-Time Navigation Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; background: #f5f5f5; }
+        .test-section { background: white; margin: 20px 0; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .test-section h3 { color: #333; margin-top: 0; }
+        .status { padding: 10px; margin: 10px 0; border-radius: 5px; }
+        .status.info { background: #e3f2fd; color: #1976d2; }
+        .status.success { background: #e8f5e8; color: #2e7d32; }
+        .status.warning { background: #fff3e0; color: #ef6c00; }
+        button { background: #007bff; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; margin: 5px; }
+        button:hover { background: #0056b3; }
+        .navigation-demo { background: #f8f9fa; padding: 15px; border-radius: 5px; margin: 10px 0; }
+    </style>
+</head>
+<body>
+    <h1>🚶‍♂️ Smart Cane Real-Time Navigation Test</h1>
+    
+    <div class="test-section">
+        <h3>📱 How Real-Time Navigation Works</h3>
+        <div class="navigation-demo">
+            <strong>🎯 What happens when you walk with your phone:</strong>
+            <ol>
+                <li><strong>Set Destination:</strong> Enter where you want to go</li>
+                <li><strong>Get Route:</strong> System finds walking path and starts real-time tracking</li>
+                <li><strong>Walk & Listen:</strong> As you move, you'll hear:
+                    <ul>
+                        <li>🔄 Direction changes: "Turn left" or "Head northeast"</li>
+                        <li>📏 Distance updates: "500 meters remaining"</li>
+                        <li>🎯 Arrival: "Destination reached!"</li>
+                    </ul>
+                </li>
+                <li><strong>Automatic Updates:</strong> Uses GPS to track movement every few seconds</li>
+            </ol>
+        </div>
+    </div>
+
+    <div class="test-section">
+        <h3>🔊 Speech Announcements During Navigation</h3>
+        <div class="navigation-demo">
+            <strong>Example announcements you'll hear:</strong>
+            <br><br>
+            <button onclick="testInitialRoute()">🚀 "Route found. Head Northeast for 1.2 kilometers"</button>
+            <br>
+            <button onclick="testDirectionChange()">🔄 "Turn left and continue for 300 meters"</button>
+            <br>
+            <button onclick="testProgress()">📏 "Keep heading north. 500 meters remaining"</button>
+            <br>
+            <button onclick="testNearDestination()">🎯 "Almost there! Continue straight for 50 meters"</button>
+            <br>
+            <button onclick="testArrival()">✅ "Destination reached! You have arrived"</button>
+        </div>
+    </div>
+
+    <div class="test-section">
+        <h3>⚙️ Real-Time Features</h3>
+        <div class="status info">
+            <strong>✅ Implemented Features:</strong>
+            <ul>
+                <li>🛰️ Continuous GPS tracking using <code>watchPosition()</code></li>
+                <li>🗣️ Voice announcements every 15-30 seconds</li>
+                <li>🧭 Direction changes detected automatically</li>
+                <li>📏 Distance milestones (every 100m when close, 500m when far)</li>
+                <li>🎯 Destination arrival detection (within 10 meters)</li>
+                <li>📱 Works with phone in pocket while walking</li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="test-section">
+        <h3>🚶‍♂️ How to Test with Your Phone</h3>
+        <div class="navigation-demo">
+            <strong>Steps to test real-time navigation:</strong>
+            <ol>
+                <li>📱 Open the main app: <a href="index.html" target="_blank">Smart Cane App</a></li>
+                <li>📍 Click "Get Current Location" to enable GPS</li>
+                <li>🗺️ Enter a destination (nearby address or landmark)</li>
+                <li>🔍 Click "Find Route" to start navigation</li>
+                <li>🚶‍♂️ Start walking toward your destination</li>
+                <li>🔊 Listen for voice updates as you move</li>
+                <li>📱 Keep phone in pocket - GPS will continue tracking</li>
+            </ol>
+        </div>
+        
+        <div class="status warning">
+            <strong>⚠️ Important Notes:</strong>
+            <ul>
+                <li>📱 Allow location permissions when prompted</li>
+                <li>🔊 Make sure device volume is up to hear announcements</li>
+                <li>🏠 May work better outdoors for accurate GPS</li>
+                <li>🔋 GPS tracking will use more battery</li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="test-section">
+        <h3>🔧 Technical Implementation</h3>
+        <div class="navigation-demo">
+            <strong>Behind the scenes:</strong>
+            <ul>
+                <li><code>navigator.geolocation.watchPosition()</code> - Continuous GPS tracking</li>
+                <li><code>updateRealTimeNavigation()</code> - Called every GPS update</li>
+                <li><code>announceDirectionUpdate()</code> - Smart speech timing</li>
+                <li><code>calculateDistance()</code> - Haversine formula for accuracy</li>
+                <li><code>getCompassDirection()</code> - Bearing to compass directions</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        function testInitialRoute() {
+            speak("Route found. Head Northeast for 1.2 kilometers. Real-time navigation started.");
+        }
+        
+        function testDirectionChange() {
+            speak("Direction change detected. Turn left and continue for 300 meters.");
+        }
+        
+        function testProgress() {
+            speak("Keep heading north. 500 meters remaining.");
+        }
+        
+        function testNearDestination() {
+            speak("Almost there! Continue straight for 50 meters.");
+        }
+        
+        function testArrival() {
+            speak("Destination reached! You have arrived at your location.");
+        }
+        
+        function speak(text) {
+            console.log('🔊 Speaking:', text);
+            
+            if ('speechSynthesis' in window) {
+                const utterance = new SpeechSynthesisUtterance(text);
+                utterance.volume = 1.0;
+                utterance.rate = 0.9;
+                speechSynthesis.speak(utterance);
+            } else {
+                alert('Speech synthesis not supported. Text: ' + text);
+            }
+        }
+    </script>
+</body>
+</html>

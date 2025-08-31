@@ -83,7 +83,7 @@ npx http-server
 ### Database Structure
 ```json
 {
-  "GPS_DATA": {
+  "GPS_": {
     "Latitude": 27.7172,
     "Longitude": 85.3240,
     "timestamp": 1635123456789

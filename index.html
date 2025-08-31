@@ -27,29 +27,52 @@
 
   <main class="container">
     <!-- Location Display Section -->
+        <!-- Current Location Display -->
     <section class="location-section">
       <h2>Current Location</h2>
       <div class="location-grid">
-        <div class="coordinate-card">
-          <label>Latitude</label>
-          <span id="latitude" class="coordinate-value">Loading...</span>
+        <div class="location-info">
+          <div class="info-card">
+            <label>📍 Location:</label>
+            <span id="locationName" class="value location-name">Loading...</span>
+          </div>
         </div>
-        <div class="coordinate-card">
-          <label>Longitude</label>
-          <span id="longitude" class="coordinate-value">Loading...</span>
+        <div class="location-info">
+          <div class="info-card">
+            <label>🗺️ Coordinates:</label>
+            <span id="coordinates" class="value coordinates">Loading...</span>
+          </div>
+        </div>
+        <div class="location-info">
+          <div class="info-card">
+            <label>📡 Source:</label>
+            <span id="locationSource" class="value source">Unknown</span>
+          </div>
+        </div>
+        <div class="location-info">
+          <div class="info-card">
+            <label>� Accuracy:</label>
+            <span id="locationAccuracy" class="value accuracy">Unknown</span>
+          </div>
         </div>
       </div>
       
-      <!-- Action Buttons -->
-      <div class="button-group">
+      <!-- Location Control Buttons -->
+      <div class="location-controls">
         <button id="getCurrentLocation" class="btn btn-primary">
           📍 Get Current Location
         </button>
-        <button id="getIPLocation" class="btn btn-secondary">
+        <button id="getIPLocation" class="btn btn-outline">
           🌐 Approximate Location
+        </button>
+        <button id="refreshLocation" class="btn btn-secondary">
+          🔄 Refresh Location
         </button>
       </div>
     </section>
+
+    <!-- Status Message -->
+    <div id="statusMessage" class="status-message hidden"></div>
 
     <!-- Navigation Section -->
     <section class="navigation-section">
@@ -75,7 +98,10 @@
         </button>
       </div>
       
-      <div id="routeInfo" class="route-info"></div>
+            <div class="route-display">
+        <div id="routeInfo" class="route-info"></div>
+        <div id="navigationProgress" class="navigation-progress"></div>
+      </div>
       
       <!-- Direction Compass -->
       <div id="directionCompass" class="direction-compass" style="display: none;">
@@ -115,6 +141,7 @@
   
   <!-- Application Scripts -->
   <script src="config/firebase.js"></script>
+  <script src="js/logger.js"></script>
   <script src="js/location.js"></script>
   <script src="js/routing.js"></script>
   <script src="js/map.js"></script>

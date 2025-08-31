@@ -1,6 +1,23 @@
 /**
  * Speech Manager for Smart Cane
- * Handles text-to-speech functionality for voice navigation
+ * Handles text-to-spe  // Speak text with options
+  speak(text, options = {}) {
+    logger.log('Attempting to speak:', text);
+    
+    if (!this.synthesis) {
+      logger.error('Speech synthesis not available');
+      return;
+    }
+    
+    if (!this.isEnabled) {
+      logger.log('Speech is disabled');
+      return;
+    }
+    
+    if (!text || text.trim() === '') {
+      logger.error('No text provided to speak');
+      return;
+    }for voice navigation
  */
 
 class SpeechManager {
@@ -101,7 +118,7 @@ class SpeechManager {
     };
 
     utterance.onerror = (event) => {
-      console.error('❌ Speech error:', event.error, event);
+      logger.error('Speech error:', event.error, event);
     };
 
     utterance.onend = () => {
