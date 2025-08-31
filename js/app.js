@@ -5,18 +5,27 @@ class SmartCaneApp {
     this.dataUpdateInterval = null;
   }
 
-    // Initialize application
+  // Initialize application
   async initialize() {
-    await this.setupFirebaseListener();
-    this.setupEventListeners();
-    this.initializeSpeech();
-    
-    // Try to get initial location after a short delay
-    setTimeout(() => {
-      this.checkAndPromptLocation();
-    }, 3000);
-    
-    logger.info('Smart Cane App initialized');
+    try {
+      this.setupFirebaseDataListener();
+      this.setupEventListeners();
+      this.initializeSpeech();
+      
+      // Try to get initial location after a short delay
+      setTimeout(() => {
+        this.checkAndPromptLocation();
+      }, 3000);
+      
+      if (typeof logger !== 'undefined') {
+        logger.info('Smart Cane App initialized');
+      } else {
+        console.log('Smart Cane App initialized');
+      }
+    } catch (error) {
+      console.error('Error initializing app:', error);
+      this.showStatus('App initialization failed', 'error');
+    }
   }
 
     // Check if location is available and prompt user if needed
@@ -25,13 +34,17 @@ class SmartCaneApp {
     
     // If still loading after 3 seconds, try to get location automatically
     if (locationNameElement && locationNameElement.textContent === 'Loading...') {
-      logger.log('No location data, attempting to get current location...');
+      if (typeof logger !== 'undefined') {
+        logger.log('No location data, attempting to get current location...');
+      }
       
       try {
         // Try to get location automatically
         await this.handleGetCurrentLocation();
       } catch (error) {
-        logger.log('Auto-location failed, showing manual prompt');
+        if (typeof logger !== 'undefined') {
+          logger.log('Auto-location failed, showing manual prompt');
+        }
         this.showStatus('Click "Get Current Location" to start navigation', 'info');
       }
     }
@@ -76,7 +89,9 @@ class SmartCaneApp {
 
   // Show status message to user
   showStatus(message, type = 'info') {
-    logger.log(`Status (${type}): ${message}`);
+    if (typeof logger !== 'undefined') {
+      logger.log(`Status (${type}): ${message}`);
+    }
     
     const statusElement = document.getElementById('statusMessage');
     if (statusElement) {
@@ -151,7 +166,9 @@ class SmartCaneApp {
   setupFirebaseDataListener() {
     gpsDataRef.on('value', (snapshot) => {
       const data = snapshot.val();
-      logger.log('Firebase data received:', data);
+      if (typeof logger !== 'undefined') {
+        logger.log('Firebase data received:', data);
+      }
       
       if (data && data.Latitude && data.Longitude) {
         this.updateLocationDisplay(data);
@@ -177,7 +194,11 @@ class SmartCaneApp {
         this.showStatus('Waiting for GPS data from device...', 'info');
       }
     }, (error) => {
-      logger.error('Firebase data listener error:', error);
+      if (typeof logger !== 'undefined') {
+        logger.error('Firebase data listener error:', error);
+      } else {
+        console.error('Firebase data listener error:', error);
+      }
       this.showStatus('Connection error with GPS device', 'error');
     });
   }
@@ -292,7 +313,7 @@ class SmartCaneApp {
     
     try {
       // Re-initialize Firebase listener
-      await this.setupFirebaseListener();
+      await this.setupFirebaseDataListener();
       this.showStatus('Location data refreshed successfully', 'success');
       
       // Speak refresh confirmation
